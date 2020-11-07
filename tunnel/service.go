@@ -8,6 +8,7 @@ package tunnel
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -15,8 +16,10 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"syscall"
 	"time"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 	"golang.zx2c4.com/wireguard/device"
@@ -158,12 +161,19 @@ func (service *tunnelService) Execute(args []string, r <-chan svc.ChangeRequest,
 	}
 
 	log.Println("Creating Wintun interface")
-	wintun, err := tun.CreateTUNWithRequestedGUID(conf.Name, deterministicGUID(conf), 0)
+	wt, err := tun.CreateTUNWithRequestedGUID(conf.Name, deterministicGUID(conf), 0)
+	if errors.Is(err, syscall.Errno(0xe0000242)) { //TODO: Find out Microsoft's name for this and add it to x/sys/windows
+		maj, min, _ := windows.RtlGetNtVersionNumbers()
+		if maj < 6 || (maj == 6 && min <= 1) {
+			serviceError = services.ErrorVintageDriverSigningModel
+			return
+		}
+	}
 	if err != nil {
 		serviceError = services.ErrorCreateWintun
 		return
 	}
-	nativeTun = wintun.(*tun.NativeTun)
+	nativeTun = wt.(*tun.NativeTun)
 	wintunVersion, err := nativeTun.RunningVersion()
 	if err != nil {
 		log.Printf("Warning: unable to determine Wintun version: %v", err)
@@ -188,7 +198,7 @@ func (service *tunnelService) Execute(args []string, r <-chan svc.ChangeRequest,
 	log.Println("Creating interface instance")
 	logOutput := log.New(ringlogger.Global, logPrefix, 0)
 	logger := &device.Logger{logOutput, logOutput, logOutput}
-	dev = device.NewDevice(wintun, logger)
+	dev = device.NewDevice(wt, logger)
 
 	log.Println("Setting interface configuration")
 	uapi, err = ipc.UAPIListen(conf.Name)

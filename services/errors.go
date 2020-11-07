@@ -18,6 +18,7 @@ const (
 	ErrorSuccess Error = iota
 	ErrorRingloggerOpen
 	ErrorLoadConfiguration
+	ErrorVintageDriverSigningModel
 	ErrorCreateWintun
 	ErrorUAPIListen
 	ErrorDNSLookup
@@ -43,6 +44,8 @@ func (e Error) Error() string {
 		return "Unable to determine path of running executable"
 	case ErrorLoadConfiguration:
 		return "Unable to load configuration from path"
+	case ErrorVintageDriverSigningModel:
+		return "Untrusted Wintun driver signature: To trust SHA-256 signatures, Windows 7 and Server 2008 R2 require KB2921916 (not deployed via Windows Update)"
 	case ErrorCreateWintun:
 		return "Unable to create Wintun interface"
 	case ErrorUAPIListen:
