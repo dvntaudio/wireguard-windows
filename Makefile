@@ -35,13 +35,16 @@ all: amd64/wireguard.exe x86/wireguard.exe arm/wireguard.exe
 	convert -background none $< -define icon:auto-resize="256,192,128,96,64,48,32,24,16" $@
 
 resources_amd64.syso: $(RESOURCE_FILES)
-	x86_64-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/amd64 -i $< -o $@
+	x86_64-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/amd64 -i $< -o $@.tmp
+	x86_64-w64-mingw32-objcopy --strip-symbol=@feat.00 $@.tmp $@; r=$$?; rm -f $@.tmp; exit $$r
 
 resources_386.syso: $(RESOURCE_FILES)
-	i686-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/x86 -i $< -o $@
+	i686-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/x86 -i $< -o $@.tmp
+	i686-w64-mingw32-objcopy --strip-symbol=@feat.00 $@.tmp $@; r=$$?; rm -f $@.tmp; exit $$r
 
 resources_arm.syso: $(RESOURCE_FILES)
-	armv7-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/arm -i $< -o $@
+	armv7-w64-mingw32-windres $(RCFLAGS) -I .deps/wintun/bin/arm -i $< -o $@.tmp
+	armv7-w64-mingw32-objcopy --strip-symbol=@feat.00 $@.tmp $@; r=$$?; rm -f $@.tmp; exit $$r
 
 amd64/wireguard.exe: export GOARCH := amd64
 amd64/wireguard.exe: resources_amd64.syso $(SOURCE_FILES)
